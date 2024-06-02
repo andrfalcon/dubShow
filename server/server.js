@@ -9,11 +9,16 @@ app.use(express.json());
 app.use(cors());
 
 app.post('/download-video', async (req, res) => {
-    console.log(req.body.url);
-    const info = await ytdl.getInfo(req.body.url);
-    const videoStream = ytdl.downloadFromInfo(info);
-    const writeStream = fs.createWriteStream('video.mp4');
-    videoStream.pipe(writeStream);  
+
+    ytdl(req.body.url, {
+        filter: 'audioandvideo'
+      })
+      .pipe(fs.createWriteStream('video.mp4'))
+      .on('finish', () => {
+        console.log('Video downloaded successfully!');
+      })
+
+    res.json({ message: "Download successful!!!" });
 })
 
 app.listen(port, () => {
