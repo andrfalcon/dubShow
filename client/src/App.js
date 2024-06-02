@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import axios from 'axios';
 
 function App() {
   const [url, setUrl] = useState('');
@@ -7,8 +8,11 @@ function App() {
     setUrl(event.target.value)
   }
 
-  const downloadVideo = () => {
-    console.log("this downloads video as mp4")
+  const postVideo = async () => {
+    const response = await axios.post('http://localhost:5001/download-video', {
+      url: url
+    });
+    console.log(response)
   }
 
   return (
@@ -20,7 +24,7 @@ function App() {
         onChange={handleSetUrl}
         placeholder="Enter YouTube video URL"
       />
-      <button>Dub to French</button>
+      <button onClick={postVideo}>Dub to French</button>
     </div>
   );
 }
