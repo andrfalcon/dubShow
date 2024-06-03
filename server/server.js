@@ -2,17 +2,25 @@ const express = require('express');
 const cors = require('cors');
 const ytdl = require('ytdl-core');
 const ffmpeg = require('fluent-ffmpeg');
+const { Configuration, OpenAIApi } = require("openai");
 const fs = require('fs');
+const { configDotenv } = require('dotenv');
 const app = express();
 const port = 5001;
+require('dotenv');
+configDotenv();
 
 app.use(express.json());
 app.use(cors());
 
+const openai = new OpenAI({
+    apiKey: process.env.OPEN_AI_SECRET_KEY,
+});
+  
 app.post('/download-video', async (req, res) => {
 
     ytdl(req.body.url, {
-        filter: 'audioandvideo'
+            filter: 'audioandvideo'
         })
       .pipe(fs.createWriteStream('youtube.mp4'))
       .on('finish', () => {
@@ -30,6 +38,9 @@ app.post('/download-video', async (req, res) => {
         console.log('Extraction successful!');
 
       })
+    
+    // Transcription
+
 
     res.json({ message: "Download successful!!!" });
 })
