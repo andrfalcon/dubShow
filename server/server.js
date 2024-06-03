@@ -5,6 +5,7 @@ const ffmpeg = require('fluent-ffmpeg');
 const fs = require('fs');
 const { OpenAI } = require('openai');
 const { configDotenv } = require('dotenv');
+const deepl = require('deepl-node');
 const app = express();
 const port = 5001;
 require('dotenv');
@@ -45,12 +46,18 @@ app.post('/download-video', async (req, res) => {
     
     await extract(req.body.url);
 
-    const transcription = await openai.audio.transcriptions.create({
+    const sourceTranscription = (await openai.audio.transcriptions.create({
         file: fs.createReadStream('audio.mp3'),
         model: 'whisper-1',
-    });
+    })).text
 
-    console.log(transcription.text);
+    console.log(sourceTranscription);
+
+    // Translation: targetTranscription
+    const translator = new deepl.Translator(process.env.DEEPL_KEY);
+    const targetTranscription = (await translator.translateText(sourceTranscription, 'en', 'fr')).text;
+
+    console.log(targetTranscription);
     
     res.json({ message: "Download successful!!!" });
 })
