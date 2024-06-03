@@ -12,7 +12,7 @@ function App() {
     const response = await axios.post('http://localhost:5001/download-video', {
       url: url
     });
-    console.log(response)
+    console.log(response);
   }
 
   return (
