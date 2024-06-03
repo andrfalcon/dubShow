@@ -2,8 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const ytdl = require('ytdl-core');
 const ffmpeg = require('fluent-ffmpeg');
-const { Configuration, OpenAIApi } = require("openai");
 const fs = require('fs');
+const { OpenAI } = require('openai');
 const { configDotenv } = require('dotenv');
 const app = express();
 const port = 5001;
@@ -13,9 +13,7 @@ configDotenv();
 app.use(express.json());
 app.use(cors());
 
-const openai = new OpenAI({
-    apiKey: process.env.OPEN_AI_SECRET_KEY,
-});
+const openai = new OpenAI({ apiKey: process.env.OPEN_AI_SECRET_KEY })
   
 app.post('/download-video', async (req, res) => {
 
@@ -36,13 +34,19 @@ app.post('/download-video', async (req, res) => {
             .save('./video.mp4')
         
         console.log('Extraction successful!');
-
       })
     
-    // Transcription
-
-
     res.json({ message: "Download successful!!!" });
+})
+
+app.get('/test-openai', async (req, res) => {
+    console.log(process.env.OPEN_AI_SECRET_KEY);
+    const chatCompletion = await openai.chat.completions.create({
+        messages: [{ role: 'user', content: 'Tell me about the capital of Venezuela.' }],
+        model: 'gpt-3.5-turbo',
+      });
+
+    console.log(chatCompletion.choices[0].message);
 })
 
 app.listen(port, () => {
