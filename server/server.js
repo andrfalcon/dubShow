@@ -6,6 +6,7 @@ const fs = require('fs');
 const { OpenAI } = require('openai');
 const { configDotenv } = require('dotenv');
 const deepl = require('deepl-node');
+const axios = require('axios');
 const app = express();
 const port = 5001;
 require('dotenv');
@@ -62,15 +63,31 @@ app.post('/download-video', async (req, res) => {
     res.json({ message: "Download successful!!!" });
 })
 
-// app.get('/test-openai', async (req, res) => {
-//     console.log(process.env.OPEN_AI_SECRET_KEY);
-//     const chatCompletion = await openai.chat.completions.create({
-//         messages: [{ role: 'user', content: 'Tell me about the capital of Venezuela.' }],
-//         model: 'gpt-3.5-turbo',
-//       });
+app.post('/dub', async (req, res) => {
+    const form = new FormData();
+    form.append("mode", "automatic");
+    form.append("source_url", req.body.url);
+    form.append("source_lang", "en");
+    form.append("target_lang", "fr");
+    form.append("num_speakers", "0");
+    form.append("watermark", "false");
 
-//     console.log(chatCompletion.choices[0].message);
-// })
+    const options = {
+    method: 'POST',
+    headers: {
+        'xi-api-key': process.env.ELEVEN_LABS_KEY,
+    }
+    };
+
+    options.body = form;
+
+    await fetch('https://api.elevenlabs.io/v1/dubbing', options)
+            .then(response => response.json())
+            .then(response => console.log(response))
+            .catch(err => console.error(err));
+
+    res.json({ message: "Download successful!!!" });
+})
 
 app.listen(port, () => {
     console.log(`Server is running at http://localhost:${port}`);
