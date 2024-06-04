@@ -9,7 +9,7 @@ function App() {
   }
 
   const postVideo = async () => {
-    const response = await axios.post('http://localhost:5001/dub', {
+    const response = await axios.post('http://localhost:5001/fetch-dub', {
       url: url
     });
     console.log(response);

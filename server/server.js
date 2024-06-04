@@ -16,6 +16,7 @@ app.use(express.json());
 app.use(cors());
 
 const openai = new OpenAI({ apiKey: process.env.OPEN_AI_SECRET_KEY });
+var dubbingId = '0000';
 
 const extract = (url) => {
     return new Promise((resolve, reject) => {
@@ -73,20 +74,37 @@ app.post('/dub', async (req, res) => {
     form.append("watermark", "false");
 
     const options = {
-    method: 'POST',
-    headers: {
-        'xi-api-key': process.env.ELEVEN_LABS_KEY,
-    }
+        method: 'POST',
+        headers: {
+            'xi-api-key': process.env.ELEVEN_LABS_KEY,
+        }
     };
 
     options.body = form;
 
     await fetch('https://api.elevenlabs.io/v1/dubbing', options)
-            .then(response => response.json())
-            .then(response => console.log(response))
+            .then((response) => {
+                dubbingId = response.json().dubbing_id
+            })
             .catch(err => console.error(err));
+            // .then(response => response.json())
+            // .then(response => console.log(response))
 
     res.json({ message: "Download successful!!!" });
+})
+
+app.post('/fetch-dub', async (req, res) => {
+    axios({
+        method: 'get',
+        headers: {
+            'xi-api-key': process.env.ELEVEN_LABS_KEY,
+        },
+        url: 'https://api.elevenlabs.io/v1/dubbing/Pe0BrdfsbuI5ayJpxNsJ/audio/fr',
+        responseType: 'stream'
+    })
+    .then(function (response) {
+        response.data.pipe(fs.createWriteStream('dubbed.mp4'))
+    });
 })
 
 app.listen(port, () => {
