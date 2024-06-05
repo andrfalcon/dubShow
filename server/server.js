@@ -5,6 +5,7 @@ const ffmpeg = require('fluent-ffmpeg');
 const fs = require('fs');
 const { OpenAI } = require('openai');
 const { configDotenv } = require('dotenv');
+const path = require('path');
 const deepl = require('deepl-node');
 const axios = require('axios');
 const app = express();
@@ -16,21 +17,23 @@ app.use(express.json());
 app.use(cors());
 
 const openai = new OpenAI({ apiKey: process.env.OPEN_AI_SECRET_KEY });
-var dubbingId = 'XUbfRk6qdMOUZg51JeeX'; 
-// Pe0BrdfsbuI5ayJpxNsJ
+var dubbingId = '0000'; // Pe0BrdfsbuI5ayJpxNsJ
 // XUbfRk6qdMOUZg51JeeX
 
 const split = () => {
+    const inputFilePath = path.join(__dirname, 'dubbed.mp4'); // Path to your input MP4 file
+    const outputFilePath = path.join(__dirname, 'dubbed.mp3'); // Path to save the output MP3 file
     return new Promise((resolve, reject) => {
         try {
-            ffmpeg('./dubbed.mp4')
-                .noVideo()
-                .save('./dubbed.mp3')
-                .on('end', () => {
-                    resolve('Audio split successfully.');
-                })
-        } catch (err) {
-            reject(err);
+            ffmpeg(inputFilePath)
+            .format('mp3')
+            .on('end', () => {
+                console.log('Audio extraction completed');
+                resolve();
+            })
+            .save(outputFilePath);
+        } catch {
+            reject();
         }
     })
 }
@@ -66,33 +69,32 @@ app.post('/create-dub', async (req, res) => {
 })
 
 app.post('/fetch-dub', async (req, res) => {
-    await axios({
+    const response = await axios({
         method: 'get',
         headers: {
             'xi-api-key': process.env.ELEVEN_LABS_KEY,
         },
-        url: `https://api.elevenlabs.io/v1/dubbing/${dubbingId}/audio/fr`,
+        url: 'https://api.elevenlabs.io/v1/dubbing/XUbfRk6qdMOUZg51JeeX/audio/fr',
         responseType: 'stream'
-    })
-    .then(function (response) {
-        response.data.pipe(fs.createWriteStream('dubbed.mp4'));
-    })
-    .catch((err) => {
-        console.log(err);
-    })
+    });
 
-    await split();
+    const writeStream = fs.createWriteStream('dubbed.mp4');
+    response.data.pipe(writeStream);
 
-    const sourceTranscription = (await openai.audio.transcriptions.create({
-        file: fs.createReadStream('dubbed.mp3'),
-        model: 'whisper-1',
-        response_format: "verbose_json",
-        timestamp_granularities: ["segment"]
-    })).segments
+    writeStream.on('finish', async () => {
+        await split();
+        
+        const sourceTranscription = (await openai.audio.transcriptions.create({
+            file: fs.createReadStream('dubbed.mp3'),
+            model: 'whisper-1',
+            response_format: "verbose_json",
+            timestamp_granularities: ["segment"]
+        })).segments
+    
+        console.log(sourceTranscription);
+    });
 
-    console.log(sourceTranscription);
-
-    res.json({ message: "Dub fetched successfully." });
+    // res.json({ sourceTranscription: sourceTranscription });
 });
 
 app.listen(port, () => {
