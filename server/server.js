@@ -83,18 +83,28 @@ app.post('/fetch-dub', async (req, res) => {
 
     writeStream.on('finish', async () => {
         await split();
-        
+
         const sourceTranscription = (await openai.audio.transcriptions.create({
             file: fs.createReadStream('dubbed.mp3'),
             model: 'whisper-1',
             response_format: "verbose_json",
             timestamp_granularities: ["segment"]
         })).segments
-    
-        console.log(sourceTranscription);
-    });
 
-    // res.json({ sourceTranscription: sourceTranscription });
+        const translator = new deepl.Translator(process.env.DEEPL_KEY);
+        
+        let targetTranscription = []
+
+        for (let i = 0; i < sourceTranscription.length; i++) {   
+            targetTranscription.push((await translator.translateText(sourceTranscription[i].text, 'fr', 'en')).text);
+        }
+        
+        res.json({ 
+            sourceTranscription: sourceTranscription, 
+            targetTranscription: targetTranscription,
+        });
+        // console.log(sourceTranscription);
+    });
 });
 
 app.listen(port, () => {
