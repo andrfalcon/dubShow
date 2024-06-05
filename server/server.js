@@ -16,62 +16,33 @@ app.use(express.json());
 app.use(cors());
 
 const openai = new OpenAI({ apiKey: process.env.OPEN_AI_SECRET_KEY });
-var dubbingId = '0000';
+var dubbingId = 'XUbfRk6qdMOUZg51JeeX'; 
+// Pe0BrdfsbuI5ayJpxNsJ
+// XUbfRk6qdMOUZg51JeeX
 
-const extract = (url) => {
+const split = () => {
     return new Promise((resolve, reject) => {
         try {
-            ytdl(url, {
-                filter: 'audioandvideo'
-            })
-            .pipe(fs.createWriteStream('youtube.mp4'))
-            .on('finish', () => {
-                ffmpeg('./youtube.mp4')
-                    .noVideo()
-                    .save('./audio.mp3')
-                    .on('end', () => {
-                        ffmpeg('./youtube.mp4')
-                            .noAudio()
-                            .save('./video.mp4')
-                            .on('end', () => {
-                                resolve('Extraction successful.');
-                            })
-                    })
-            })
+            ffmpeg('./dubbed.mp4')
+                .noVideo()
+                .save('./dubbed.mp3')
+                .on('end', () => {
+                    resolve('Audio split successfully.');
+                })
         } catch (err) {
             reject(err);
         }
     })
 }
-  
-app.post('/download-video', async (req, res) => {
-    
-    await extract(req.body.url);
 
-    const sourceTranscription = (await openai.audio.transcriptions.create({
-        file: fs.createReadStream('audio.mp3'),
-        model: 'whisper-1',
-    })).text
-
-    console.log(sourceTranscription);
-
-    // Translation: targetTranscription
-    const translator = new deepl.Translator(process.env.DEEPL_KEY);
-    const targetTranscription = (await translator.translateText(sourceTranscription, 'en', 'fr')).text;
-
-    console.log(targetTranscription);
-    
-    res.json({ message: "Download successful!!!" });
-})
-
-app.post('/dub', async (req, res) => {
+app.post('/create-dub', async (req, res) => {
     const form = new FormData();
     form.append("mode", "automatic");
     form.append("source_url", req.body.url);
     form.append("source_lang", "en");
     form.append("target_lang", "fr");
     form.append("num_speakers", "0");
-    form.append("watermark", "false");
+    form.append("watermark", "true");
 
     const options = {
         method: 'POST',
@@ -83,30 +54,93 @@ app.post('/dub', async (req, res) => {
     options.body = form;
 
     await fetch('https://api.elevenlabs.io/v1/dubbing', options)
-            .then((response) => {
-                dubbingId = response.json().dubbing_id
+            .then(async (response) => {
+                dubbingId = (await response.json()).dubbing_id
+                console.log(dubbingId);
             })
             .catch(err => console.error(err));
             // .then(response => response.json())
             // .then(response => console.log(response))
 
-    res.json({ message: "Download successful!!!" });
+    res.json({ message: "Dub converted successfully." });
 })
 
 app.post('/fetch-dub', async (req, res) => {
-    axios({
+    await axios({
         method: 'get',
         headers: {
             'xi-api-key': process.env.ELEVEN_LABS_KEY,
         },
-        url: 'https://api.elevenlabs.io/v1/dubbing/Pe0BrdfsbuI5ayJpxNsJ/audio/fr',
+        url: `https://api.elevenlabs.io/v1/dubbing/${dubbingId}/audio/fr`,
         responseType: 'stream'
     })
     .then(function (response) {
-        response.data.pipe(fs.createWriteStream('dubbed.mp4'))
-    });
-})
+        response.data.pipe(fs.createWriteStream('dubbed.mp4'));
+    })
+    .catch((err) => {
+        console.log(err);
+    })
+
+    await split();
+
+    const sourceTranscription = (await openai.audio.transcriptions.create({
+        file: fs.createReadStream('dubbed.mp3'),
+        model: 'whisper-1',
+        response_format: "verbose_json",
+        timestamp_granularities: ["segment"]
+    })).segments
+
+    console.log(sourceTranscription);
+
+    res.json({ message: "Dub fetched successfully." });
+});
 
 app.listen(port, () => {
     console.log(`Server is running at http://localhost:${port}`);
 });
+
+// const extract = (url) => {
+//     return new Promise((resolve, reject) => {
+//         try {
+//             ytdl(url, {
+//                 filter: 'audioandvideo'
+//             })
+//             .pipe(fs.createWriteStream('youtube.mp4'))
+//             .on('finish', () => {
+//                 ffmpeg('./youtube.mp4')
+//                     .noVideo()
+//                     .save('./audio.mp3')
+//                     .on('end', () => {
+//                         ffmpeg('./youtube.mp4')
+//                             .noAudio()
+//                             .save('./video.mp4')
+//                             .on('end', () => {
+//                                 resolve('Extraction successful.');
+//                             })
+//                     })
+//             })
+//         } catch (err) {
+//             reject(err);
+//         }
+//     })
+// }
+
+// app.post('/download-video', async (req, res) => {
+    
+//     await extract(req.body.url);
+
+//     const sourceTranscription = (await openai.audio.transcriptions.create({
+//         file: fs.createReadStream('audio.mp3'),
+//         model: 'whisper-1',
+//     })).text
+
+//     console.log(sourceTranscription);
+
+//     // Translation: targetTranscription
+//     const translator = new deepl.Translator(process.env.DEEPL_KEY);
+//     const targetTranscription = (await translator.translateText(sourceTranscription, 'en', 'fr')).text;
+
+//     console.log(targetTranscription);
+    
+//     res.json({ message: "Download successful!!!" });
+// })

@@ -8,10 +8,17 @@ function App() {
     setUrl(event.target.value)
   }
 
-  const postVideo = async () => {
-    const response = await axios.post('http://localhost:5001/fetch-dub', {
+  const createDub = async () => {
+    const response = await axios.post('http://localhost:5001/create-dub', {
       url: url
     });
+    console.log(response);
+  }
+
+  const fetchDub = async () => {
+    const response = (await axios.post('http://localhost:5001/fetch-dub', {
+      message: "hello, world"
+    }));
     console.log(response);
   }
 
@@ -24,7 +31,8 @@ function App() {
         onChange={handleSetUrl}
         placeholder="Enter YouTube video URL"
       />
-      <button onClick={postVideo}>Dub to French</button>
+      <button onClick={createDub}>Create Dub</button>
+      <button onClick={fetchDub}>Fetch Dub</button>
     </div>
   );
 }
