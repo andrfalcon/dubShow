@@ -84,28 +84,59 @@ app.post('/fetch-dub', async (req, res) => {
     writeStream.on('finish', async () => {
         await split();
 
-        const sourceTranscription = (await openai.audio.transcriptions.create({
-            file: fs.createReadStream('dubbed.mp3'),
-            model: 'whisper-1',
-            response_format: "verbose_json",
-            timestamp_granularities: ["segment"]
-        })).segments
+        res.download(path.join(__dirname, 'dubbed.mp4'));
 
-        const translator = new deepl.Translator(process.env.DEEPL_KEY);
-        
-        let targetTranscription = []
+        // const sourceTranscription = (await openai.audio.transcriptions.create({
+        //     file: fs.createReadStream('dubbed.mp3'),
+        //     model: 'whisper-1',
+        //     response_format: "verbose_json",
+        //     timestamp_granularities: ["segment"]
+        // })).segments
 
-        for (let i = 0; i < sourceTranscription.length; i++) {   
-            targetTranscription.push((await translator.translateText(sourceTranscription[i].text, 'fr', 'en')).text);
-        }
+        // const translator = new deepl.Translator(process.env.DEEPL_KEY);
         
-        res.json({ 
-            sourceTranscription: sourceTranscription, 
-            targetTranscription: targetTranscription,
-        });
-        // console.log(sourceTranscription);
+        // let targetTranscription = []
+
+        // for (let i = 0; i < sourceTranscription.length; i++) {   
+        //     targetTranscription.push((await translator.translateText(sourceTranscription[i].text, 'fr', 'en-US')).text);
+        // }
+        
+        // res.json({ 
+        //     sourceTranscription: sourceTranscription, 
+        //     targetTranscription: targetTranscription,
+        // });
     });
 });
+
+app.get('/stream', (req, res) => {
+    const videoPath = path.resolve(__dirname, 'dubbed.mp4');
+    const videoStat = fs.statSync(videoPath);
+    const fileSize = videoStat.size;
+    const range = req.headers.range;
+
+    if (range) {
+        const parts = range.replace(/bytes=/, "").split("-");
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+        const chunkSize = (end - start) + 1;
+        const file = fs.createReadStream(videoPath, { start, end });
+        const head = {
+            'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+            'Accept-Ranges': 'bytes',
+            'Content-Length': chunkSize,
+            'Content-Type': 'video/mp4',
+        };
+        res.writeHead(206, head);
+        file.pipe(res);
+    } else {
+        const head = {
+            'Content-Length': fileSize,
+            'Content-Type': 'video/mp4',
+        };
+        res.writeHead(200, head);
+        fs.createReadStream(videoPath).pipe(res);
+    }
+})
 
 app.listen(port, () => {
     console.log(`Server is running at http://localhost:${port}`);
