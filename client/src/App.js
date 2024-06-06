@@ -8,10 +8,22 @@ function App() {
   const [currentTime, setCurrentTime] = useState(0); // State to hold the current time
   const videoRef = useRef(null);
 
+  const sourceTranscriptionRef = useRef(null);
+  const targetTranscriptionRef = useRef(null);
+
+  const [displayedSource, setDisplayedSource] = useState('');
+  const [displayedTarget, setDisplayedTarget] = useState('');
+
   // Function to update the current time when the video playback position changes
   const handleTimeUpdate = () => {
     if (videoRef.current) {
-      setCurrentTime(videoRef.current.currentTime); // Update the current time state
+      const currentTime = videoRef.current.currentTime;
+      const timestamps = Object.keys(sourceTranscriptionRef.current).filter(value => value <= currentTime);
+      const currentTimestamp = timestamps[timestamps.length - 1];
+      console.log(currentTimestamp);
+      setCurrentTime(currentTime); // Update the current time state
+      setDisplayedSource(sourceTranscriptionRef.current[currentTimestamp]);
+      setDisplayedTarget(targetTranscriptionRef.current[currentTimestamp]);
     }
   };
 
@@ -30,8 +42,16 @@ function App() {
     const response = (await axios.post('http://localhost:5001/fetch-dub', {
       message: "hello, world"
     }));
-    console.log(response);
+    sourceTranscriptionRef.current = response.data.sourceTranscription;
+    targetTranscriptionRef.current = response.data.targetTranscription;
+    setDisplayedSource(sourceTranscriptionRef.current[0]);
+    setDisplayedTarget(targetTranscriptionRef.current[0]);
+    console.log(sourceTranscriptionRef);
   }
+
+  // function handleSourceTranscription () {
+
+  // }
 
   return (
     <div>
@@ -51,6 +71,8 @@ function App() {
             <source src="http://localhost:5001/stream" type="video/mp4" />
           </video>
           <h1>{currentTime.toFixed(2)}</h1>
+          <h2>{displayedSource}</h2>
+          <h2>{displayedTarget}</h2>
         </div>
       ) : (
         <h2>Press the stream button to start streaming.</h2>

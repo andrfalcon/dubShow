@@ -84,27 +84,32 @@ app.post('/fetch-dub', async (req, res) => {
     writeStream.on('finish', async () => {
         await split();
 
-        res.download(path.join(__dirname, 'dubbed.mp4'));
+        const sourceTranscription = (await openai.audio.transcriptions.create({
+            file: fs.createReadStream('dubbed.mp3'),
+            model: 'whisper-1',
+            response_format: "verbose_json",
+            timestamp_granularities: ["segment"]
+        })).segments
 
-        // const sourceTranscription = (await openai.audio.transcriptions.create({
-        //     file: fs.createReadStream('dubbed.mp3'),
-        //     model: 'whisper-1',
-        //     response_format: "verbose_json",
-        //     timestamp_granularities: ["segment"]
-        // })).segments
-
-        // const translator = new deepl.Translator(process.env.DEEPL_KEY);
+        const translator = new deepl.Translator(process.env.DEEPL_KEY);
         
-        // let targetTranscription = []
+        let targetTranscription = {}
 
-        // for (let i = 0; i < sourceTranscription.length; i++) {   
-        //     targetTranscription.push((await translator.translateText(sourceTranscription[i].text, 'fr', 'en-US')).text);
-        // }
+        for (let i = 0; i < sourceTranscription.length; i++) {   
+            // targetTranscription.push((await translator.translateText(sourceTranscription[i].text, 'fr', 'en-US')).text);
+            targetTranscription[Math.round(sourceTranscription[i].start)] = (await translator.translateText(sourceTranscription[i].text, 'fr', 'en-US')).text;
+        }
+
+        let finalSourceTranscription = {}
+
+        for (let i = 0; i < sourceTranscription.length; i++) {
+            finalSourceTranscription[Math.round(sourceTranscription[i].start)] = sourceTranscription[i].text
+        }
         
-        // res.json({ 
-        //     sourceTranscription: sourceTranscription, 
-        //     targetTranscription: targetTranscription,
-        // });
+        res.json({ 
+            sourceTranscription: finalSourceTranscription, 
+            targetTranscription: targetTranscription,
+        });
     });
 });
 
